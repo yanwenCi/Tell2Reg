@@ -1,0 +1,10 @@
+*.pth
+savefigs/*
+savefigs/
+env-sam/
+pretrained_weights/
+datasets/
+logs/
+checkpoints/
+__pycache__/
+*.png
