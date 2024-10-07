@@ -123,7 +123,7 @@ class SamWithTextPrompt(nn.Module):
                                          caption=text_prompt,
                                          box_threshold=box_threshold,
                                          text_threshold=text_threshold,
-                                         remove_combined=self.return_prompts,
+                                         #remove_combined=self.return_prompts,
                                          device=self.device)
         
         W, H = image_array.size()[-2:]

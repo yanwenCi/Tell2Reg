@@ -1,0 +1,138 @@
+GPU Prolog Script v1.14
+This is a GPU node.
+Enough GPUs available.
+Allocating card 0
+/cluster/project7/longitude/SamMedImg/env-sam/lib/python3.9/site-packages/torch/functional.py:513: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3609.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+/cluster/project7/longitude/SamMedImg/env-sam/lib/python3.9/site-packages/transformers/tokenization_utils_base.py:1617: FutureWarning: `clean_up_tokenization_spaces` was not set. It will be set to `True` by default. This behavior will be deprecated in transformers v4.45, and will be then set to `False` by default. For more details check this issue: https://github.com/huggingface/transformers/issues/31884
+  warnings.warn(
+/cluster/project7/longitude/SamMedImg/networks/networks.py:56: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(cache_file, map_location='cpu')
+/cluster/project7/longitude/SamMedImg/env-sam/lib/python3.9/site-packages/transformers/modeling_utils.py:1141: FutureWarning: The `device` argument is deprecated and will be removed in v5 of Transformers.
+  warnings.warn(
+/cluster/project7/longitude/SamMedImg/env-sam/lib/python3.9/site-packages/torch/_dynamo/eval_frame.py:600: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.4 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+/cluster/project7/longitude/SamMedImg/env-sam/lib/python3.9/site-packages/torch/utils/checkpoint.py:92: UserWarning: None of the inputs have requires_grad=True. Gradients will be None
+  warnings.warn(
+/cluster/project7/longitude/SamMedImg/env-sam/lib/python3.9/site-packages/groundingdino/models/GroundingDINO/transformer.py:862: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=False):
+final text_encoder_type: bert-base-uncased
+Model loaded from /home/wenyan/.cache/huggingface/hub/models--ShilongLiu--GroundingDINO/snapshots/a94c9b567a2a374598f05c584e96798a170c56fb/groundingdino_swinb_cogcoor.pth 
+ => _IncompatibleKeys(missing_keys=[], unexpected_keys=['label_enc.weight', 'bert.embeddings.position_ids'])
+data length: 699
+data length: 158
+Trainable parameters: 232313216
+source ['hole 0.21', 'hole 0.18', 'hole 0.22', 'hole 0.19', 'hole 0.18', 'hole 0.19', 'hole 0.20', 'hole 0.17', 'hole 0.19', 'hole 0.17', 'prostate 0.22']
+target ['hole 0.34', 'hole 0.16', 'hole 0.15', 'hole 0.15', 'hole 0.22', 'edge 0.21', 'edge 0.16', 'prostate 0.15', 'middle 0.15']
+before paring torch.Size([11, 1000, 1000]) torch.Size([9, 1000, 1000])
+after pairing torch.Size([5, 1000, 1000]) torch.Size([5, 1000, 1000])
+Optimising DDF (dense displacement field):
+iter=0: loss=0.66851 (roi=0.66851, ddf=0.00000)
+iter=100: loss=0.58606 (roi=0.58599, ddf=0.00000)
+iter=200: loss=0.51949 (roi=0.51937, ddf=0.00000)
+iter=300: loss=0.46357 (roi=0.46341, ddf=0.00000)
+iter=400: loss=0.41338 (roi=0.41321, ddf=0.00000)
+iter=500: loss=0.37108 (roi=0.37091, ddf=0.00000)
+iter=600: loss=0.34055 (roi=0.34039, ddf=0.00000)
+iter=700: loss=0.31804 (roi=0.31788, ddf=0.00000)
+iter=800: loss=0.30046 (roi=0.30030, ddf=0.00000)
+iter=900: loss=0.28537 (roi=0.28521, ddf=0.00000)
+iter=1000: loss=0.27201 (roi=0.27186, ddf=0.00000)
+iter=1100: loss=0.26236 (roi=0.26222, ddf=0.00000)
+iter=1200: loss=0.25381 (roi=0.25368, ddf=0.00000)
+iter=1300: loss=0.24607 (roi=0.24595, ddf=0.00000)
+iter=1400: loss=0.23870 (roi=0.23858, ddf=0.00000)
+iter=1500: loss=0.23196 (roi=0.23184, ddf=0.00000)
+iter=1600: loss=0.22571 (roi=0.22559, ddf=0.00000)
+iter=1700: loss=0.21988 (roi=0.21976, ddf=0.00000)
+iter=1800: loss=0.21442 (roi=0.21431, ddf=0.00000)
+iter=1900: loss=0.20938 (roi=0.20925, ddf=0.00000)
+iter=2000: loss=0.20476 (roi=0.20464, ddf=0.00000)
+iter=2100: loss=0.20058 (roi=0.20046, ddf=0.00000)
+iter=2200: loss=0.19676 (roi=0.19664, ddf=0.00000)
+iter=2300: loss=0.19339 (roi=0.19328, ddf=0.00000)
+iter=2400: loss=0.19043 (roi=0.19031, ddf=0.00000)
+iter=2500: loss=0.18791 (roi=0.18780, ddf=0.00000)
+iter=2600: loss=0.18581 (roi=0.18571, ddf=0.00000)
+iter=2700: loss=0.18456 (roi=0.18446, ddf=0.00000)
+iter=2800: loss=0.18450 (roi=0.18441, ddf=0.00000)
+iter=2900: loss=0.18448 (roi=0.18440, ddf=0.00000)
+iter=3000: loss=0.18448 (roi=0.18440, ddf=0.00000)
+iter=3100: loss=0.18447 (roi=0.18439, ddf=0.00000)
+iter=3200: loss=0.18444 (roi=0.18436, ddf=0.00000)
+iter=3300: loss=0.18443 (roi=0.18436, ddf=0.00000)
+iter=3400: loss=0.18443 (roi=0.18436, ddf=0.00000)
+iter=3500: loss=0.18442 (roi=0.18435, ddf=0.00000)
+iter=3600: loss=0.18441 (roi=0.18434, ddf=0.00000)
+iter=3700: loss=0.18440 (roi=0.18433, ddf=0.00000)
+iter=3800: loss=0.18439 (roi=0.18432, ddf=0.00000)
+iter=3900: loss=0.18439 (roi=0.18431, ddf=0.00000)
+iter=4000: loss=0.18438 (roi=0.18431, ddf=0.00000)
+iter=4100: loss=0.18438 (roi=0.18431, ddf=0.00000)
+iter=4200: loss=0.18436 (roi=0.18429, ddf=0.00000)
+iter=4300: loss=0.18432 (roi=0.18425, ddf=0.00000)
+iter=4400: loss=0.18431 (roi=0.18423, ddf=0.00000)
+iter=4500: loss=0.18429 (roi=0.18422, ddf=0.00000)
+iter=4600: loss=0.18428 (roi=0.18422, ddf=0.00000)
+iter=4700: loss=0.18425 (roi=0.18419, ddf=0.00000)
+iter=4800: loss=0.18425 (roi=0.18418, ddf=0.00000)
+iter=4900: loss=0.18424 (roi=0.18417, ddf=0.00000)
+iter=5000: loss=0.18424 (roi=0.18417, ddf=0.00000)
+iter=5100: loss=0.18423 (roi=0.18416, ddf=0.00000)
+iter=5200: loss=0.18423 (roi=0.18416, ddf=0.00000)
+iter=5300: loss=0.18422 (roi=0.18416, ddf=0.00000)
+iter=5400: loss=0.18421 (roi=0.18415, ddf=0.00000)
+iter=5500: loss=0.18421 (roi=0.18414, ddf=0.00000)
+iter=5600: loss=0.18420 (roi=0.18414, ddf=0.00000)
+iter=5700: loss=0.18419 (roi=0.18411, ddf=0.00000)
+iter=5800: loss=0.18418 (roi=0.18411, ddf=0.00000)
+iter=5900: loss=0.18417 (roi=0.18411, ddf=0.00000)
+iter=6000: loss=0.18418 (roi=0.18411, ddf=0.00000)
+iter=6100: loss=0.18417 (roi=0.18410, ddf=0.00000)
+iter=6200: loss=0.18416 (roi=0.18409, ddf=0.00000)
+iter=6300: loss=0.18415 (roi=0.18408, ddf=0.00000)
+iter=6400: loss=0.18415 (roi=0.18408, ddf=0.00000)
+iter=6500: loss=0.18415 (roi=0.18408, ddf=0.00000)
+iter=6600: loss=0.18414 (roi=0.18408, ddf=0.00000)
+iter=6700: loss=0.18414 (roi=0.18407, ddf=0.00000)
+iter=6800: loss=0.18414 (roi=0.18407, ddf=0.00000)
+iter=6900: loss=0.18413 (roi=0.18407, ddf=0.00000)
+iter=7000: loss=0.18413 (roi=0.18407, ddf=0.00000)
+iter=7100: loss=0.18413 (roi=0.18407, ddf=0.00000)
+iter=7200: loss=0.18412 (roi=0.18406, ddf=0.00000)
+iter=7300: loss=0.18409 (roi=0.18402, ddf=0.00000)
+iter=7400: loss=0.18408 (roi=0.18401, ddf=0.00000)
+iter=7500: loss=0.18407 (roi=0.18401, ddf=0.00000)
+iter=7600: loss=0.18407 (roi=0.18401, ddf=0.00000)
+iter=7700: loss=0.18407 (roi=0.18400, ddf=0.00000)
+iter=7800: loss=0.18407 (roi=0.18400, ddf=0.00000)
+iter=7900: loss=0.18406 (roi=0.18400, ddf=0.00000)
+iter=8000: loss=0.18405 (roi=0.18399, ddf=0.00000)
+iter=8100: loss=0.18405 (roi=0.18399, ddf=0.00000)
+iter=8200: loss=0.18405 (roi=0.18399, ddf=0.00000)
+iter=8300: loss=0.18405 (roi=0.18399, ddf=0.00000)
+iter=8400: loss=0.18405 (roi=0.18399, ddf=0.00000)
+iter=8500: loss=0.18404 (roi=0.18398, ddf=0.00000)
+iter=8600: loss=0.18404 (roi=0.18397, ddf=0.00000)
+iter=8700: loss=0.18404 (roi=0.18397, ddf=0.00000)
+iter=8800: loss=0.18403 (roi=0.18397, ddf=0.00000)
+iter=8900: loss=0.18402 (roi=0.18396, ddf=0.00000)
+iter=9000: loss=0.18402 (roi=0.18396, ddf=0.00000)
+iter=9100: loss=0.18402 (roi=0.18396, ddf=0.00000)
+iter=9200: loss=0.18401 (roi=0.18396, ddf=0.00000)
+iter=9300: loss=0.18402 (roi=0.18396, ddf=0.00000)
+iter=9400: loss=0.18401 (roi=0.18396, ddf=0.00000)
+iter=9500: loss=0.18401 (roi=0.18395, ddf=0.00000)
+iter=9600: loss=0.18401 (roi=0.18395, ddf=0.00000)
+iter=9700: loss=0.18400 (roi=0.18394, ddf=0.00000)
+iter=9800: loss=0.18400 (roi=0.18394, ddf=0.00000)
+iter=9900: loss=0.18398 (roi=0.18392, ddf=0.00000)
+Traceback (most recent call last):
+  File "/cluster/project7/longitude/SamMedImg/training_with_text_3dimg.py", line 250, in <module>
+    training(args)
+  File "/cluster/project7/longitude/SamMedImg/training_with_text_3dimg.py", line 204, in training
+    epoch_losses.append(dice_score(masks_warped.cpu().data.numpy()/255, tgt_paired_roi))
+  File "/cluster/project7/longitude/SamMedImg/training_with_text_3dimg.py", line 26, in dice_score
+    batch_size = prediction.size(0)
+TypeError: 'int' object is not callable
+GPU Epilog Script v0.30

@@ -4,7 +4,7 @@ import monai
 import torch
 import numpy as np 
 import matplotlib.pyplot as plt
-from dataloaders.LangDataLoader3d import dataset_loaders
+from dataloaders.AS_dataloaders import LongitudinalData as dataset_loaders
 from networks.networks import SamWithTextPrompt, draw_image
 # from networks.networks_with_pretrain import SamWithTextPrompt
 from text_prompts import  generate_prompts
@@ -37,29 +37,26 @@ def count_trainable_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
     
 
-# Create directories and print the number of images and masks in each
-def creat_datasets(datasets, data_root, data_types):
-    # Initialize dictionary for storing image and label paths
-    data_paths = {}
-    for dataset in datasets:
-        for data_type in data_types:
-            # Construct the directory path
-            dir_path = os.path.join(data_root, f'{dataset}_{data_type}')
-            
-            # Find images and labels in the directory
-            if 'cat' in data_type:
-                files = sorted(glob.glob(os.path.join(dir_path, "*t2w.png")))
-            else:
-                files = sorted(glob.glob(os.path.join(dir_path, "*.png")))
-        
-            # Store the image and label paths in the dictionary
-            data_paths[f'{dataset}_{data_type.split("_")[1]}'] = files
-
-    print('Number of training images', len(data_paths['train_images']))
-    print('Number of validation images', len(data_paths['val_images']))
-    print('Number of test images', len(data_paths['test_images']))
-    return data_paths
-
+# creat dataset
+def set_dataloader(data_root):
+        self.train_set = dataloaders.LongitudinalData(data_root, phase='train')
+        self.train_loader = DataLoader(
+            self.train_set, 
+            batch_size=1, 
+            shuffle=False,  
+            num_workers=4, 
+            drop_last=True)  # no need to shuffle since the shuffling is customized in the dataloader.
+        print('>>> Train set ready. length:', len(self.train_loader))  
+        self.val_set = dataloaders.LongitudinalData(config=self.config, phase='val')
+        self.val_loader = DataLoader(self.val_set, batch_size=1, shuffle=False)
+        print('>>> Validation set ready. length:', len(self.val_loader))
+        self.test_set = dataloaders.LongitudinalData(config=self.config, phase='test')
+        self.test_loader = DataLoader(self.test_set, batch_size=1, shuffle=False)
+        print('>>> Holdout set ready. length:', len(self.test_loader))
+        fx_img, mv_img = input_dict['fx_img'].cuda(), input_dict['mv_img'].cuda()  # [batch, 1, x, y, z]
+        fx_seg, mv_seg = input_dict['fx_seg'].cuda(), input_dict['mv_seg'].cuda()
+        return fx_img, mv_img, fx_seg, mv_seg
+   
 def sorted_indices(tgt, ref):
     sorted_indices = sorted(range(len(ref)), key=lambda k: ref[k])[::-1]
 
@@ -102,8 +99,8 @@ def training(args):
     data_types = ['2d_images_cat', '2d_masks']
     
     
-    train_dataset = dataset_loaders(path=args.data_root, phase='train', batch_size=batch_size, np_var='vol', add_feat_axis=True)
-    val_dataset = dataset_loaders(path=args.data_root, phase='valid', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
+    train_dataset = dataset_loaders(path=args.data_root, phase='train')
+    val_dataset = dataset_loaders(path=args.data_root, phase='valid')
     # define training loop
     num_epochs = args.num_epoch
 
@@ -124,9 +121,9 @@ def training(args):
 
     # set model to train mode for gradient updating
     model.train()
+    epoch = 0
     # with torch.no_grad():
-    epoch=0
-    while epoch<100:
+    while epoch<1000:
         # create temporary list to record training losses
         epoch_losses = []
         epoch+=1
@@ -159,16 +156,7 @@ def training(args):
                 tgt_labels = [f"{phrase} {logit:.2f}" for phrase, logit in zip(tgt_phrases, tgt_logits)]
                 print('target', tgt_labels)
                 print('before paring', src_pred_msk.shape, tgt_pred_msk.shape)
-            # use everything model
-            # print('src_pred_msk', src_pred_msk.shape, src_boxes.shape)
-            # tgt_pred_msk = model.pred_everything_sam(tgt_input)
-            # src_pred_msk = model.pred_everything_sam(src_input)
-            # tgt_pred_msk = torch.from_numpy(np.stack(tgt_pred_msk['masks'], axis=0))
-            # src_pred_msk = torch.from_numpy(np.stack(src_pred_msk['masks'], axis=0))
-            # need simplified
-            
-            # ground_truth_masks = batch_source["ground_truth_mask"].float()
-           
+
             src_img = prepare_draw_image(batch_source, idx, src_pred_msk, src_boxes, labels)
             tgt_img = prepare_draw_image(batch_target, idx, tgt_pred_msk, tgt_boxes, tgt_labels)
 
@@ -200,9 +188,6 @@ def training(args):
           
                 masks_warped = (warp_by_ddf(src_paired_roi.to(dtype=torch.float32, device=device), ddf)*255).to(torch.uint8)
                 image_warped = (warp_by_ddf(to_tensor(src_input).to(dtype=torch.float32, device=device), ddf)*255).to(torch.uint8)
-                masks_warped = masks_warped
-                epoch_losses.append(dice_score(masks_warped.cpu().data.numpy()/255, tgt_paired_roi))
-                
                 for k in range(src_paired_roi.shape[0]):
                     cv2.imwrite(f'savefigs/src_paired_roi{i}_{k}.png', src_paired_roi[k,...].numpy().astype(np.uint8)*255)
                 for k in range(tgt_paired_roi.shape[0]):
@@ -212,7 +197,7 @@ def training(args):
                 cv2.imwrite(f'savefigs/image_warped{i}.png', image_warped.permute(1,2,0).cpu().data.numpy())
                 # max_idx_src = torch.argmax(src_logits)
                 # max_idx_tgt = torch.argmax(tgt_logits)
-                
+                epoch_losses.append(dice_score(masks_warped, tgt_paired_roi))
                 axs[1,0].imshow(src_paired_roi[0,...].cpu().detach().numpy(), cmap='gray')
                 axs[1,0].axis('off')
                 axs[1,0].set_title('1st Source Paired ROI')
@@ -229,7 +214,6 @@ def training(args):
                 plt.savefig(f'savefigs/debug{i}.png')
                 plt.close()
     print(f'Dice score: {np.mean(epoch_losses)}')
-    
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
