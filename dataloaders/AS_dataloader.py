@@ -5,9 +5,6 @@ import torch
 import random
 import numpy as np
 from glob import glob
-from src.model.loss import global_mutual_information
-import src.model.functions as smfunction
-import src.data.preprocess as pre
 from scipy.ndimage import zoom
 
 torch.set_default_tensor_type('torch.FloatTensor')
@@ -48,13 +45,7 @@ class DiffusionData(data.Dataset):
         moving_key, fixed_key = self.key_pairs_list[index]
         fixed_image, fixed_label = np.load(os.path.join(self.data_path, self.image_folder, fixed_key + '-T2.npy'))
         moving_image, moving_label = np.load(os.path.join(self.data_path, self.image_folder, moving_key + '-T2.npy'))
-        
-        if self.config.patched and (self.phase == 'train'):
-            moving_image, moving_label, fixed_image, fixed_label = pre.random_crop_3d([moving_image, moving_label, fixed_image, fixed_label], self.config.patch_size)
-        
-        if self.config.cropped:
-            moving_image, moving_label, fixed_image, fixed_label = pre.random_crop_3d([moving_image, moving_label, fixed_image, fixed_label], self.config.crop_size)
-        
+
         return fixed_image
         # slices = self.images[index]
         # return slices
@@ -118,10 +109,10 @@ class LongitudinalData(data.Dataset):
         #     moving_image, moving_label, fixed_image, fixed_label = pre.random_crop_3d([moving_image, moving_label, fixed_image, fixed_label], self.config.crop_size)
        
         data_dict = {
-            'mv_img': torch.FloatTensor(moving_image).permute(1,0,2), 
-            'mv_seg': torch.FloatTensor(moving_label).permute(1,0,2), 
-            'fx_img': torch.FloatTensor(fixed_image).permute(1,0,2), 
-            'fx_seg': torch.FloatTensor(fixed_label).permute(1,0,2),
+            'mv_img': torch.FloatTensor(moving_image).rot90(k=1, dims=(0,1)), 
+            'mv_seg': torch.FloatTensor(moving_label).rot90(k=1, dims=(0,1)), 
+            'fx_img': torch.FloatTensor(fixed_image).rot90(k=1, dims=(0,1)), 
+            'fx_seg': torch.FloatTensor(fixed_label).rot90(k=1, dims=(0,1)),
             'mv_key': moving_key,
             'fx_key': fixed_key,
             }
@@ -131,11 +122,11 @@ class LongitudinalData(data.Dataset):
         else:
             mv_ldmk_paths = glob(os.path.join(self.data_path, self.image_folder, moving_key + '-T2-ldmark*'))
             mv_ldmk_paths.sort(key=lambda x: int(os.path.basename(x).replace('.npy', '').split('-')[-1]))
-            mv_ldmk_arrs = [torch.FloatTensor(np.load(i)).permute(1,0,2) for i in mv_ldmk_paths]
+            mv_ldmk_arrs = [torch.FloatTensor(np.load(i)).rot90(k=1, dims=(0,1)) for i in mv_ldmk_paths]
 
             fx_ldmk_paths = glob(os.path.join(self.data_path, self.image_folder, fixed_key + '-T2-ldmark*'))
             fx_ldmk_paths.sort(key=lambda x: int(os.path.basename(x).replace('.npy', '').split('-')[-1]))
-            fx_ldmk_arrs = [torch.FloatTensor(np.load(i)).permute(1,0,2) for i in fx_ldmk_paths]
+            fx_ldmk_arrs = [torch.FloatTensor(np.load(i)).rot90(k=1, dims=(0,1)) for i in fx_ldmk_paths]
             # print(mv_ldmk_paths, fx_ldmk_paths)
             data_dict['mv_ldmk_paths'] = mv_ldmk_paths
             data_dict['mv_ldmks'] = mv_ldmk_arrs

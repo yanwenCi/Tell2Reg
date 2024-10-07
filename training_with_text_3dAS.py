@@ -2,6 +2,7 @@ import os
 import glob
 import monai
 import torch
+import torch.nn.functional as F
 import numpy as np 
 import matplotlib.pyplot as plt
 from dataloaders import AS_dataloader as dataloaders
@@ -19,14 +20,11 @@ import random
 import cv2
 
 
-
 def dice_score(prediction, target):
     smooth = 1e-10 # Smoothing factor to prevent division by zero
-    #print(prediction.shape, target.shape)
-    # prediction = torch.sigmoid(prediction)
-    batch_size = prediction.size(0)
-    prediction_flat = prediction.view(batch_size, -1)
-    target_flat = target.view(batch_size, -1)
+    class_num = prediction.shape[0]
+    prediction_flat = prediction.reshape(class_num, -1)
+    target_flat = target.reshape(class_num, -1)
 
     intersection = torch.sum(prediction_flat * target_flat, dim=-1)
     union = torch.sum(prediction_flat, dim=-1) + torch.sum(target_flat, dim=-1)
@@ -66,8 +64,10 @@ def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def set_input(source, idx):
-    source = np.stack([source[:,:,idx]] *3 ,axis=-1)
+def set_input(source, idx, ch=3):
+    source = source[:,:,idx].numpy()
+    if ch>1:
+        source = np.stack([source] * ch ,axis=-1)
     source = (source*255).astype(np.uint8)
     src_input = Image.fromarray(source).resize((1000,1000))
     return src_input
@@ -147,26 +147,28 @@ def training(args):
     model.train()
     epoch = 0
     # with torch.no_grad():
-    while epoch<1000:
+    while epoch<num_epochs:
         # create temporary list to record training losses
         epoch_losses = []
         epoch+=1
         for i, input_dict in enumerate(train_dataset):
             # forward pass
             case_acc = []
+            
             batch_target, batch_source = input_dict['fx_img'], input_dict['mv_img'] # [batch, 1, x, y, z]
             tgt_seg, src_seg = input_dict['fx_seg'], input_dict['mv_seg']
             
+            case_stack = torch.zeros_like(tgt_seg)
 
-            text_prompt = ['hole','edge','head', 'prostate', 'texture','middle']#, black in left, black in right, bladder in upper middle, rectum, bone, tumor, hole, vessel, fat, high signal, low signal, muscle'
-            min_len = min(batch_target.shape[-1],batch_source.shape[-1])//2
-            # idx = np.random.randint(min_len-10, min_len+10)
+            text_prompt = ['hole','edge','head', 'prostate', 'texture','middle','bathrobe', 'cloth']#, black in left, black in right, bladder in upper middle, rectum, bone, tumor, hole, vessel, fat, high signal, low signal, muscle'
+            min_len = min(batch_target.shape[-1],batch_source.shape[-1])
+            # idx = np.random.randint(min_len//2-10, min_len//2+10)
 
-            for idx in range(min_len-20, min_len+20, 2):
+            for idx in range(min_len):#(min_len-20, min_len+20, 2):
                 src_input = set_input(batch_source, idx)
                 tgt_input = set_input(batch_target, idx)
-                src_seg = set_input(src_seg, idx)
-                tgt_seg = set_input(tgt_seg, idx)
+                src_seg_in = set_input(src_seg, idx, ch=1)
+                tgt_seg_in = set_input(tgt_seg, idx, ch=1)
                 with torch.no_grad():
                     src_pred_msk, src_boxes, src_phrases, src_logits, src_emb = model.predict(image_pil=src_input,
                       text_prompt=text_prompt)
@@ -193,27 +195,38 @@ def training(args):
             
                     paired_rois = PairedRegions(masks_mov=src_paired_roi, masks_fix=tgt_paired_roi,  device=device)
                     ddf = paired_rois.get_dense_correspondence(transform_type='ddf', max_iter=int(1e4), lr=1e-3, w_ddf=1000.0, verbose=True)
-          
-                    masks_warped = (warp_by_ddf(src_paired_roi.to(dtype=torch.float32, device=device), ddf)*255).to(torch.uint8).cpu()
+                    
+                    # warp the source image and mask to the target image space
+                    masks_warped = (warp_by_ddf(src_paired_roi.to(dtype=torch.float32, device=device), ddf)).to(torch.uint8).cpu()
                     image_warped = (warp_by_ddf(to_tensor(src_input).to(dtype=torch.float32, device=device), ddf)*255).to(torch.uint8).cpu()
-
-                    prostate_mask_warped = (warp_by_ddf(to_tensor(src_seg).to(dtype=torch.float32, device=device), ddf)*255).to(torch.uint8).cpu()
-                    for k in range(src_paired_roi.shape[0]):
-                        cv2.imwrite(f'savefigs/src_paired_roi{i}_{idx}_{k}.png', src_paired_roi[k,...].numpy().astype(np.uint8)*255)
-                    for k in range(tgt_paired_roi.shape[0]):
-                        cv2.imwrite(f'savefigs/tgt_paired_roi{i}_{idx}_{k}.png', tgt_paired_roi[k,...].numpy().astype(np.uint8)*255)
-                    for k in range(masks_warped.shape[0]):
-                        cv2.imwrite(f'savefigs/masks_warped{i}_{idx}_{k}.png', masks_warped[k,...].numpy())
-                    cv2.imwrite(f'savefigs/image_warped{i}_{idx}.png', image_warped.permute(1,2,0).numpy())
-                    # max_idx_src = torch.argmax(src_logits)
-                    # max_idx_tgt = torch.argmax(tgt_logits)
-                    dice=[[dice_score(masks_warped, tgt_paired_roi), dice_score(prostate_mask_warped, tgt_seg)]]
+                    # real task of prostate segmentation
+                    prostate_mask_warped = (warp_by_ddf(to_tensor(src_seg_in).to(dtype=torch.float32, device=device), ddf)).to(torch.uint8).cpu()
+                    
+                    # print(masks_warped.max(), tgt_paired_roi.max(), prostate_mask_warped.max(), to_tensor(tgt_seg_in).max()) 255 1 255 1
+                    prostate_mask_warped=F.interpolate(prostate_mask_warped[None,...], size=(128, 128), mode='bilinear', align_corners=False)
+                   
+                    case_stack[:,:,idx]=prostate_mask_warped[0,0]
+                    dice=dice_score(masks_warped, tgt_paired_roi)
                     print(f'Dice score: {dice}')
-                    case_acc.append(dice)
                     epoch_losses.append(dice)
-                    plot_together(src_img, tgt_img, src_paired_roi, tgt_paired_roi, masks_warped, image_warped, i, idx)
-            print(f'Case {i} Dice score: {np.mean(np.stack(case_acc, axis=0), axis=0)}')
-    print(f'Overall Dice score: {np.mean(np.stack(epoch_losses, axis=0), axis=0)}')
+                   
+                    #plot and save images
+                    if idx == min_len//2:
+                        for k in range(src_paired_roi.shape[0]):
+                            cv2.imwrite(f'savefigs/src_paired_roi{i}_{idx}_{k}.png', src_paired_roi[k,...].numpy().astype(np.uint8)*255)
+                        for k in range(tgt_paired_roi.shape[0]):
+                            cv2.imwrite(f'savefigs/tgt_paired_roi{i}_{idx}_{k}.png', tgt_paired_roi[k,...].numpy().astype(np.uint8)*255)
+                        for k in range(masks_warped.shape[0]):
+                            cv2.imwrite(f'savefigs/masks_warped{i}_{idx}_{k}.png', masks_warped[k,...].numpy()*255)
+                        cv2.imwrite(f'savefigs/image_warped{i}_{idx}.png', image_warped.permute(1,2,0).numpy())
+                    
+                        plot_together(src_img, tgt_img, src_paired_roi, tgt_paired_roi, masks_warped, image_warped, i, idx)
+            
+            case_dice = dice_score(case_stack[None,...], tgt_seg[None,...])
+            case_acc.append(case_dice)
+            print(f'Case {i} Dice score: {case_dice}')
+
+    print(f'Overall Dice score: {np.mean(np.stack(epoch_losses, axis=0), axis=0)}, Case Dice score: {np.mean(np.stack(case_acc, axis=0), axis=0)}')
 
 if __name__ == '__main__':
     import argparse
@@ -229,7 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('--continue_train', action='store_true')
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
     training(args)

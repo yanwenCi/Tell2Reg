@@ -9,7 +9,7 @@ class dataset_loaders(data.Dataset):
     def __init__(self, path, 
                  phase, batch_size=1, 
                  np_var='vol', add_batch_axis=False, pad_shape=None,
-                resize_factor=(2.5,2.5,1), add_feat_axis=False, crop_size=None,
+                resize_factor=(2.5,2.5,0.5), add_feat_axis=False, crop_size=None,
                 istest=False, transform=None):
         self.path = path
         self.phase = phase

@@ -42,7 +42,7 @@ class SamWithTextPrompt(nn.Module):
         self.build_groundingdino()
         self.return_prompts = return_prompts
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.build_sam()
+        self.build_sam(ckpt_path)
      
        
        
@@ -68,7 +68,7 @@ class SamWithTextPrompt(nn.Module):
         image_transformed, _ = transform(image, None)
         return image_transformed
 
-    def build_sam(self, ckpt_path=None):
+    def build_sam(self, ckpt_path=CACHE_PATH):
         if self.sam_type is None or ckpt_path is None:
             if self.sam_type is None:
                 print("No sam type indicated. Using vit_h by default.")
@@ -123,7 +123,7 @@ class SamWithTextPrompt(nn.Module):
                                          caption=text_prompt,
                                          box_threshold=box_threshold,
                                          text_threshold=text_threshold,
-                                         #remove_combined=self.return_prompts,
+                                         remove_combined=self.return_prompts,
                                          device=self.device)
         
         W, H = image_array.size()[-2:]
@@ -163,7 +163,7 @@ class SamWithTextPrompt(nn.Module):
         else:
             return torch.stack(full_image_bboxes), torch.stack(filtered_logits), filtered_phrases
     
-    def predict(self, image_pil, text_prompt, box_threshold=0.10, text_threshold=0.10, input_boxes=None):
+    def predict(self, image_pil, text_prompt, box_threshold=0.15, text_threshold=0.15, input_boxes=None):
         if isinstance(text_prompt, str):
             boxes, logits, phrases = self.predict_dino(image_pil, text_prompt, box_threshold, text_threshold)
         elif isinstance(text_prompt, list):
@@ -189,7 +189,7 @@ class SamWithTextPrompt(nn.Module):
             # print('masks shape after:', masks.shape)
         return masks, boxes, phrases, logits, embeddings
     
-    def _mask_criteria(self, masks, boxes, phrases, logits, v_min=1000, v_max= 7e4, overlap_ratio=0.8):
+    def _mask_criteria(self, masks, boxes, phrases, logits, v_min=8000, v_max= 7e5, overlap_ratio=0.8):
         remove_list = set()
         for _i, mask in enumerate(masks):
             if mask.sum() < v_min or mask.sum() > v_max:
