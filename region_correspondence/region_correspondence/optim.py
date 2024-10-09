@@ -62,9 +62,9 @@ def iterative_ddf(mov, fix, control_grid_size=None, device=None, max_iter=int(1e
         loss_value_ddf = loss_ddf(ddf)
         loss = loss_value_roi + loss_value_ddf*w_ddf
         
-        if verbose:
-            if iter % 100 == 0:
-                print("iter={}: loss={:0.5f} (roi={:0.5f}, ddf={:0.5f})".format(iter, loss, loss_value_roi, loss_value_ddf))
+        # if verbose:
+        #     if iter % 200 == 0:
+        #         print("iter={}: loss={:0.5f} (roi={:0.5f}, ddf={:0.5f})".format(iter, loss, loss_value_roi, loss_value_ddf))
         
         loss.backward()
         optimizer.step()

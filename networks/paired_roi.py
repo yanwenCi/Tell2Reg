@@ -173,10 +173,16 @@ class RoiMatching():
                 self.embs2 = self._roi_proto(emb2,self.masks2) # 6.752s
                 self.sim_matrix = self._similarity_matrix(self.embs1, self.embs2)
                 self.masks1_cor, self.masks2_cor = self._roi_match(self.sim_matrix,self.masks1,self.masks2,self.sim_criteria)
+                if len(self.masks1_cor) > 0 and len(self.masks2_cor) > 0:
+                    return torch.from_numpy(np.stack(self.masks1_cor)), torch.from_numpy(np.stack(self.masks2_cor))
+                else:
+                    return torch.tensor([]), torch.tensor([])
+            else:
+                return torch.tensor([]), torch.tensor([])
         elif mode=='overlaping':
             self._overlap_pair(self.masks1,self.masks2)
-        return torch.from_numpy(np.stack(self.masks1_cor)), torch.from_numpy(np.stack(self.masks2_cor))
-
+            return torch.from_numpy(np.stack(self.masks1_cor)), torch.from_numpy(np.stack(self.masks2_cor))
+       
     def get_jacobian_matrix(self, simap, roimap, fc=False):
         simap.requires_grad_(True)
         _roimap = roimap.to(self.device)

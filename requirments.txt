@@ -1,0 +1,7 @@
+monai>=1.0
+scikit-image>=0.18.0
+torch
+torchio
+opencv-python
+groundingdino-py
+segment-anything

@@ -189,7 +189,7 @@ class SamWithTextPrompt(nn.Module):
             # print('masks shape after:', masks.shape)
         return masks, boxes, phrases, logits, embeddings
     
-    def _mask_criteria(self, masks, boxes, phrases, logits, v_min=1000, v_max= 7e4, overlap_ratio=0.8):
+    def _mask_criteria(self, masks, boxes, phrases, logits, v_min=1000, v_max= 5e5, overlap_ratio=0.8):
         remove_list = set()
         for _i, mask in enumerate(masks):
             if mask.sum() < v_min or mask.sum() > v_max:
@@ -219,9 +219,10 @@ class SamWithTextPrompt(nn.Module):
         phrases = [phrase for idx, phrase in enumerate(phrases) if idx not in remove_list]
         logits = [logit for idx, logit in enumerate(logits) if idx not in remove_list]
         
-        masks = torch.stack(masks)
-        boxes = torch.stack(boxes)
-       
-        # print('masks shape:', masks.shape)
-        return masks, boxes, phrases, logits
+        if len(masks) == 0:
+            return torch.tensor([]), torch.tensor([]), [], []
+        else:
+            masks = torch.stack(masks)
+            boxes = torch.stack(boxes)  
+            return masks, boxes, phrases, logits
     
