@@ -1,9 +1,0 @@
-GPU Prolog Script v1.14
-This is a GPU node.
-Enough GPUs available.
-Allocating card 0
-Traceback (most recent call last):
-  File "/cluster/project7/longitude/SamMedImg/training_with_text_3dimg.py", line 10, in <module>
-    from networks.networks import SamWithTextPrompt, draw_image
-ModuleNotFoundError: No module named 'networks.networks'; 'networks' is not a package
-GPU Epilog Script v0.30
