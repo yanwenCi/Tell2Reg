@@ -32,9 +32,12 @@ def dice_score(prediction, target):
     dice = (2.0 * intersection + smooth) / (union + smooth)
     return dice.mean() # Return the dice score as a scalar value
 
-def compute_centroid(mask):
+def compute_centroid(mask, resize):
     # assert torch.sum(mask) > 0, 'nothing find on the mask'
     mask = mask >= 0.5  # shape (1, 1, x, y, z)
+    mask = mask.to(torch.float32)
+    if resize==True:
+        mask = F.interpolate(mask, size=(mask.shape[2], 256, 256), mode='trilinear')
     mesh_points = [torch.tensor(list(range(dim))) for dim in mask.shape[2:]]
     grid = torch.stack(torch.meshgrid(*mesh_points))  # shape:[3, x, y, z]
     grid = grid.type(torch.FloatTensor)
@@ -42,9 +45,9 @@ def compute_centroid(mask):
     grid = grid * mask[0]
     return torch.sum(grid, axis=(1, 2, 3))/torch.sum(mask[0])
 
-def centroid_distance(y_true, y_pred):
-    c1 = compute_centroid(y_true)
-    c2 = compute_centroid(y_pred)
+def centroid_distance(y_true, y_pred,resize=False):
+    c1 = compute_centroid(y_true, resize)
+    c2 = compute_centroid(y_pred, resize)
     return torch.sqrt(torch.sum((c1-c2)**2))
 
 
@@ -147,7 +150,7 @@ def training(args):
         # create temporary list to record training losses
         epoch_losses = []
         epoch+=1
-        for i in range(args.num_epoch, 15):
+        for i in range(args.num_epoch, 20):
             # forward pass
             case_acc = []
             # forward pass
@@ -227,16 +230,16 @@ def training(args):
             case_dice = dice_score(case_stack[None,...], torch.from_numpy(tgt_seg)[None,...])
             case_cd = centroid_distance(case_stack.permute(3,0,1,2)[None,...], torch.from_numpy(tgt_seg).permute(3,0,1,2)[None,...])        
             case_acc.append([case_dice, case_cd])
-            print(f'***Case {i} Dice score: {case_dice.numpy()}')
+            print(f'***Case {i} Dice score: {case_dice.numpy()}, Center distance {case_cd.numpy()}')
             fid.writelines(f'***Case {i} Dice score: {case_dice}, Center distance {case_cd}\n')
-    print(epoch_losses)
     mean_dice=np.mean(np.stack(epoch_losses, axis=0), axis=0)
     mean_casedice = np.mean(np.stack(case_acc, axis=0), axis=0)
     std_dice = np.std(np.stack(epoch_losses, axis=0), axis=0)
     std_casedice = np.std(np.stack(case_acc, axis=0), axis=0)
     print(f'Overall Dice score: {mean_dice}, Case Dice score: {mean_casedice}')
     print(f'Overall Dice score std: {std_dice}, Case Dice score std: {std_casedice}')
-    fid.writelines(f'Overall Dice score: {mean_dice}, Case Dice score: {mean_casedice}, Overall Dice score std: {std_dice}, Case Dice score std: {std_casedice}\n')
+    fid.writelines(f'Overall Dice score: {mean_dice}, Case Dice score: {mean_casedice}\n')
+    fid.writelines(f'Overall Dice score std: {std_dice}, Case Dice score std: {std_casedice}\n')
 
 if __name__ == '__main__':
     import argparse
