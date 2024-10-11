@@ -120,7 +120,7 @@ def training(args):
     ckp_path = args.ckp_path
     savefigs = os.path.join(args.ckp_path, args.savefigs)
     os.makedirs(savefigs, exist_ok=True)
-    fid = open(f'{savefigs}/testlog1.txt', 'w')
+    fid = open(f'{savefigs}/testlog2.txt', 'w')
     
     if not os.path.exists(ckp_path):
         os.makedirs(ckp_path)
@@ -150,7 +150,7 @@ def training(args):
         # create temporary list to record training losses
         epoch_losses = []
         epoch+=1
-        for i in range(args.num_epoch, 20):
+        for i in range(args.num_epoch):
             # forward pass
             case_acc = []
             # forward pass
@@ -228,23 +228,28 @@ def training(args):
             caseimg = nib.Nifti1Image((case_stack[:,:,:,0]).numpy(), np.eye(4))
             nib.save(caseimg, f'{savefigs}/case{i}.nii.gz')
             case_dice = dice_score(case_stack[None,...], torch.from_numpy(tgt_seg)[None,...])
+            case_cd = centroid_distance(case_stack.permute(3,0,1,2)[None,...], torch.from_numpy(tgt_seg).permute(3,0,1,2)[None,...],resize=True)        
+            case_acc.append([case_dice, case_cd])
+            print(f'***Case {i} Dice score: {case_dice.numpy()}, Center distance {case_cd.numpy()}')
             case_cd = centroid_distance(case_stack.permute(3,0,1,2)[None,...], torch.from_numpy(tgt_seg).permute(3,0,1,2)[None,...])        
             case_acc.append([case_dice, case_cd])
             print(f'***Case {i} Dice score: {case_dice.numpy()}, Center distance {case_cd.numpy()}')
             fid.writelines(f'***Case {i} Dice score: {case_dice}, Center distance {case_cd}\n')
-    mean_dice=np.mean(np.stack(epoch_losses, axis=0), axis=0)
-    mean_casedice = np.mean(np.stack(case_acc, axis=0), axis=0)
-    std_dice = np.std(np.stack(epoch_losses, axis=0), axis=0)
-    std_casedice = np.std(np.stack(case_acc, axis=0), axis=0)
-    print(f'Overall Dice score: {mean_dice}, Case Dice score: {mean_casedice}')
-    print(f'Overall Dice score std: {std_dice}, Case Dice score std: {std_casedice}')
-    fid.writelines(f'Overall Dice score: {mean_dice}, Case Dice score: {mean_casedice}\n')
-    fid.writelines(f'Overall Dice score std: {std_dice}, Case Dice score std: {std_casedice}\n')
+    # 
+
+        mean_dice=np.mean(epoch_losses, axis=0)
+        mean_casedice = np.mean(np.stack(case_acc, axis=0), axis=0)
+        std_dice = np.std(epoch_losses, axis=0)
+        std_casedice = np.std(np.stack(case_acc, axis=0), axis=0)
+        print(f'Overall Dice score: {mean_dice}, Case Dice score: {mean_casedice}')
+        print(f'Overall Dice score std: {std_dice}, Case Dice score std: {std_casedice}')
+        fid.writelines(f'Overall Dice score: {mean_dice}, Case Dice score: {mean_casedice}\n')
+        fid.writelines(f'Overall Dice score std: {std_dice}, Case Dice score std: {std_casedice}\n')
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_epoch', type=int, default=10)
+    parser.add_argument('--num_epoch', type=int, default=40)
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-6)
     parser.add_argument('--ckp_path', type=str, default='checkpoints')
