@@ -189,7 +189,7 @@ class SamWithTextPrompt(nn.Module):
             # print('masks shape after:', masks.shape)
         return masks, boxes, phrases, logits, embeddings
     
-    def _mask_criteria(self, masks, boxes, phrases, logits, v_min=2000, v_max= 7e4, overlap_ratio=0.8):
+    def _mask_criteria(self, masks, boxes, phrases, logits, v_min=2000, v_max= 5e5, overlap_ratio=0.8):
         remove_list = set()
         for _i, mask in enumerate(masks):
             if mask.sum() < v_min or mask.sum() > v_max:

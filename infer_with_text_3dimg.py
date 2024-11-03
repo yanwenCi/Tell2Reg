@@ -37,7 +37,7 @@ def compute_centroid(mask, resize):
     mask = mask >= 0.5  # shape (1, 1, x, y, z)
     mask = mask.to(torch.float32)
     if resize==True:
-        mask = F.interpolate(mask, size=(mask.shape[2], 256, 256), mode='trilinear')
+        mask = F.interpolate(mask, size=(mask.shape[2], 200, 200), mode='trilinear')
     mesh_points = [torch.tensor(list(range(dim))) for dim in mask.shape[2:]]
     grid = torch.stack(torch.meshgrid(*mesh_points))  # shape:[3, x, y, z]
     grid = grid.type(torch.FloatTensor)
@@ -120,7 +120,7 @@ def training(args):
     ckp_path = args.ckp_path
     savefigs = os.path.join(args.ckp_path, args.savefigs)
     os.makedirs(savefigs, exist_ok=True)
-    fid = open(f'{savefigs}/testlog2.txt', 'w')
+    fid = open(f'{savefigs}/testlog4.txt', 'w')
     
     if not os.path.exists(ckp_path):
         os.makedirs(ckp_path)
@@ -128,9 +128,9 @@ def training(args):
     # processor = SamProcessor.from_pretrained('facebook/sam-vit-base')
     model = SamWithTextPrompt(sam_type=args.sam_type)
     batch_size = args.batch_size
-    train_dataset = dataset_loaders(path=args.data_root, phase='train', batch_size=batch_size, np_var='vol', add_feat_axis=True)
-    val_dataset = dataset_loaders(path=args.data_root, phase='valid', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
-    test_dataset = dataset_loaders(path=args.data_root, phase='test', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
+    train_dataset = dataset_loaders(path=args.dataroot, phase='train', batch_size=batch_size, np_var='vol', add_feat_axis=True)
+    val_dataset = dataset_loaders(path=args.dataroot, phase='valid', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
+    test_dataset = dataset_loaders(path=args.dataroot, phase='test', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
    
     # define training loop
     num_epochs = args.num_epoch
@@ -149,10 +149,11 @@ def training(args):
     if len(train_dataset)>0:
         # create temporary list to record training losses
         epoch_losses = []
+        case_acc = []
         epoch+=1
-        for i in range(args.num_epoch):
+        for i in range(37, args.num_epoch):
             # forward pass
-            case_acc = []
+            
             # forward pass
             print(f'*****Process Case {i}*****')
             input_dict= test_dataset.__getitem__(i)
@@ -230,13 +231,14 @@ def training(args):
             case_dice = dice_score(case_stack[None,...], torch.from_numpy(tgt_seg)[None,...])
             case_cd = centroid_distance(case_stack.permute(3,0,1,2)[None,...], torch.from_numpy(tgt_seg).permute(3,0,1,2)[None,...],resize=True)        
             case_acc.append([case_dice, case_cd])
+            
             print(f'***Case {i} Dice score: {case_dice.numpy()}, Center distance {case_cd.numpy()}')
-            case_cd = centroid_distance(case_stack.permute(3,0,1,2)[None,...], torch.from_numpy(tgt_seg).permute(3,0,1,2)[None,...])        
-            case_acc.append([case_dice, case_cd])
-            print(f'***Case {i} Dice score: {case_dice.numpy()}, Center distance {case_cd.numpy()}')
+            # case_cd = centroid_distance(case_stack.permute(3,0,1,2)[None,...], torch.from_numpy(tgt_seg).permute(3,0,1,2)[None,...])        
+            # case_acc.append([case_dice, case_cd])
+            # print(f'***Case {i} Dice score: {case_dice.numpy()}, Center distance {case_cd.numpy()}')
             fid.writelines(f'***Case {i} Dice score: {case_dice}, Center distance {case_cd}\n')
     # 
-
+        
         mean_dice=np.mean(epoch_losses, axis=0)
         mean_casedice = np.mean(np.stack(case_acc, axis=0), axis=0)
         std_dice = np.std(epoch_losses, axis=0)
@@ -249,7 +251,7 @@ def training(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_epoch', type=int, default=40)
+    parser.add_argument('--num_epoch', type=int, default=50)
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-6)
     parser.add_argument('--ckp_path', type=str, default='checkpoints')
@@ -257,7 +259,7 @@ if __name__ == '__main__':
     parser.add_argument('--sam_type', type=str, default='vit_h')
     parser.add_argument('--model_name', type=str, default='samregnet')
     parser.add_argument('--weight_decay', type=float, default=1e-4)
-    parser.add_argument('--data_root', type=str, default='datasets')
+    parser.add_argument('--dataroot', type=str, default='datasets')
     parser.add_argument('--continue_train', action='store_true')
     parser.add_argument('--gpu', type=str, default='0')
     args = parser.parse_args()

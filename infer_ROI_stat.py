@@ -88,7 +88,15 @@ def check_overlap(bbox, mask):
     
     # return np.any(overlap)  # Returns True if there is any overlap
 
-
+def calculate_size(rois):
+    rois_size = []
+    for roi in rois:
+        roi[roi>0]=1
+        rois_size.append(torch.sum(roi))
+    rois_size = np.stack(rois_size, axis=0)
+    return np.min(rois_size), np.max(rois_size), np.mean(rois_size)
+        
+    
 def training(args):
     # Set seed for deterministic behavior
     set_seed(42)
@@ -103,8 +111,8 @@ def training(args):
     model = SamWithTextPrompt(sam_type=args.sam_type)
     batch_size = args.batch_size
 
-    train_dataset = dataset_loaders(path=args.data_root, phase='train', batch_size=batch_size, np_var='vol', add_feat_axis=True)
-    val_dataset = dataset_loaders(path=args.data_root, phase='valid', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
+    train_dataset = dataset_loaders(path=args.dataroot, phase='train', batch_size=batch_size, np_var='vol', add_feat_axis=True)
+    val_dataset = dataset_loaders(path=args.dataroot, phase='valid', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
    
    
     # define training loop
@@ -130,7 +138,7 @@ def training(args):
         # create temporary list to record training losses
         epoch_losses = []
         epoch+=1
-        for i in range(10):
+        for i in range(num_epochs):
             # forward pass
             case_acc = []
             # forward pass
@@ -139,10 +147,11 @@ def training(args):
             tgt_seg, src_seg = input_dict['fx_seg'], input_dict['mv_seg']
             
            
-            text_prompt = 'dog'#, black in left, black in right, bladder in upper middle, rectum, bone, tumor, hole, vessel, fat, high signal, low signal, muscle'
+            text_prompt = 'big'#, black in left, black in right, bladder in upper middle, rectum, bone, tumor, hole, vessel, fat, high signal, low signal, muscle'
             min_len = min(batch_target.shape[0],batch_source.shape[0])
             # idx = np.random.randint(min_len//2-10, min_len//2+10)
             print(text_prompt)
+            all_rois_small, all_rois_large, all_rois_mean=0,0,0
             for idx in range(min_len):#(min_len-20, min_len+20, 2):
                 src_input = Image.fromarray(batch_source[idx])
                 tgt_input = Image.fromarray(batch_target[idx])
@@ -160,12 +169,25 @@ def training(args):
                     
                     src_paired_roi, tgt_paired_roi = roi_matching.get_paired_roi(src_pred_msk.numpy(), tgt_pred_msk.numpy(), src_emb, tgt_emb)
                     
+                    if len(src_paired_roi)==0:
+                        continue
+
+                    rois_small, rois_large, rois_mean = calculate_size(src_paired_roi)
+                    total += 1
                     corres += len(src_paired_roi)
                     src += len(src_pred_msk)
                     tgt += len(tgt_pred_msk)
+                    
+                    all_rois_small+=rois_small
+                    all_rois_large+=rois_large
+                    all_rois_mean+=rois_mean
+                    
+                    
+
 
                 
-            print(f"src: {src}, tgt: {tgt}, corres: {corres}")                  
+            print(f"src: {src}, tgt: {tgt}, corres: {corres}")     
+        print(f"small: {all_rois_small/total}, large: {all_rois_large/total}, mean: {all_rois_mean/total}")             
             # print(f"case{i} done")
     # print(f"Correspondence for {text_prompt}: {corres}/{total}")
                     
@@ -176,7 +198,7 @@ def training(args):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--num_epoch', type=int, default=10)
+    parser.add_argument('--num_epoch', type=int, default=5)
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-6)
     parser.add_argument('--ckp_path', type=str, default='checkpoints')
@@ -184,7 +206,7 @@ if __name__ == '__main__':
     parser.add_argument('--sam_type', type=str, default='vit_h')
     parser.add_argument('--model_name', type=str, default='samregnet')
     parser.add_argument('--weight_decay', type=float, default=1e-4)
-    parser.add_argument('--data_root', type=str, default='datasets')
+    parser.add_argument('--dataroot', type=str, default='datasets')
     parser.add_argument('--continue_train', action='store_true')
     args = parser.parse_args()
 

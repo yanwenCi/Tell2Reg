@@ -9,7 +9,7 @@ class dataset_loaders(data.Dataset):
     def __init__(self, path, 
                  phase, batch_size=1, 
                  np_var='vol', add_batch_axis=False, pad_shape=None,
-                resize_factor=(2.5, 2.5,0.5), add_feat_axis=False, crop_size=None,
+                resize_factor=(1000, 1000, 0.5), add_feat_axis=False, crop_size=None,
                 istest=False, transform=None):
         self.path = path
         self.phase = phase
@@ -23,10 +23,10 @@ class dataset_loaders(data.Dataset):
         self.istest = istest
         self.transforms = transform
         self.path_list=open(os.path.join(self.path, self.phase, 'pair_path_list.txt'), 'r').readlines()
-        if phase == 'valid':
-            self.path_list = self.path_list[:60]
-        elif phase == 'test':
-            self.path_list = self.path_list[:120]
+        # if phase == 'valid':
+        #     self.path_list = self.path_list[:60]
+        # elif phase == 'test':
+        #     self.path_list = self.path_list[:120]
         self.t2w_filenames = [x.strip().split(' ')[0] for x in self.path_list]
         mid = len(self.t2w_filenames)//2
         self.src_filenames = [self.t2w_filenames[i] for i in range(0, mid)]
@@ -37,7 +37,7 @@ class dataset_loaders(data.Dataset):
         # self.zon_filenames = [x.strip().split(' ')[2] for x in self.path_list]
         # self.zonsrc_filenames = [self.zon_filenames[i] for i in range(0, mid)]
         # self.zontgt_filenames = [self.zon_filenames[i] for i in range(mid, len(self.zon_filenames)-len(self.zon_filenames)%2)]
-        # print(f"data length: {len(self.src_filenames)}")
+        print(f"data length: {len(self.pair_filenames)}")
 
     def norm255(self, image):
         img=255*(image - image.min())/(image.max() - image.min())
@@ -130,12 +130,16 @@ def load_volfile(
     else:
         raise ValueError('unknown filetype for %s' % filename)
 
-   
     if add_feat_axis:
         vol = vol[..., np.newaxis]
 
-    if resize_factor != 1:
+    # if resize_factor != 1:
+    #     vol = resize(vol, resize_factor)
+    if resize_factor[0]/vol.shape[0] != 1:
+        # print(f"resize factor: {resize_factor}")
+        resize_factor = (resize_factor[0]/vol.shape[0], resize_factor[1]/vol.shape[1], resize_factor[2])
         vol = resize(vol, resize_factor)
+        # print(f"vol shape: {vol.shape}")
 
     if pad_shape:
         vol, _ = pad(vol, pad_shape)
