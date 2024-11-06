@@ -5,10 +5,10 @@ import torch
 import torch.nn.functional as F
 import numpy as np 
 import matplotlib.pyplot as plt
+import sys
+sys.path.append("../Tell2RegGit")
 from dataloaders.LangDataLoader3d import dataset_loaders
-from dataloaders.dataloaders import LongitudinalData
 from networks.networks import SamWithTextPrompt, draw_image
-# from networks.networks_with_pretrain import SamWithTextPrompt
 from text_prompts import  generate_prompts
 from PIL import Image
 #matplotlib inline
@@ -128,14 +128,9 @@ def training(args):
     # processor = SamProcessor.from_pretrained('facebook/sam-vit-base')
     model = SamWithTextPrompt(sam_type=args.sam_type)
 
-    # batch_size = args.batch_size
-    # train_dataset = dataset_loaders(path=args.dataroot, phase='train', batch_size=batch_size, np_var='vol', add_feat_axis=True)
-    # val_dataset = dataset_loaders(path=args.dataroot, phase='valid', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
-    # test_dataset = dataset_loaders(path=args.dataroot, phase='test', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
-    dataroot = r'../Dataset/ASData/0.7-0.7-0.7-64-64-51' 
-    key_file = 'key-train-IFIB-val-IFIB-test-IFIB.pkl'
-    train_dataset = LongitudinalData(data_path=dataroot, key_file=key_file, phase='train')
-    test_dataset = LongitudinalData(data_path=dataroot, key_file=key_file, phase='val')
+    batch_size = args.batch_size
+    test_dataset = dataset_loaders(path=args.dataroot, phase='test', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
+   
     # define training loop
     num_epochs = args.num_epoch
 
@@ -150,7 +145,7 @@ def training(args):
     # set model to train mode for gradient updating
     model.train()
     epoch = 0
-    if len(train_dataset)>0:
+    if len(test_dataset)>0:
         # create temporary list to record training losses
         epoch_losses = []
         case_acc = []

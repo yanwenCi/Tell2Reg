@@ -22,10 +22,10 @@ class dataset_loaders(data.Dataset):
         self.crop_size = crop_size
         self.istest = istest
         self.transforms = transform
-        self.files = os.listdir(path)
-        self.files = [f for f in self.files if f.endswith('.nii.gz')]
-        self.src_filenames = self.files[0]
-        self.tgt_filenames = self.files[1]
+        files = os.listdir(path)
+        self.pair_filenames = [os.path.join(path, f) for f in files if 'mask' not in f]
+        print(self.pair_filenames)                   
+        self.zone_filenames = [f.replace('.nii.gz', '_mask.nii.gz') for f in self.pair_filenames]
         print(f"data length: {len(self.pair_filenames)}")
 
     def norm255(self, image):
@@ -33,21 +33,18 @@ class dataset_loaders(data.Dataset):
         return img.astype(np.uint8)
     
     def load_data(self, indices):
-    # convert glob path to filenames
-        assert len(self.pair_filenames) == len(self.zone_filenames)
-        # load volumes and concatenate
         load_params = dict(np_var=self.np_var, add_batch_axis=self.add_batch_axis, add_feat_axis=self.add_feat_axis,
                            pad_shape=self.pad_shape, resize_factor=self.resize_factor, crop_size=self.crop_size)
         vols =[]
         for l in range(2): 
-            tmp=load_volfile(self.pair_filenames[indices][l], **load_params).transpose(2,0,1,3)
+            tmp=load_volfile(self.pair_filenames[l], **load_params).transpose(2,0,1,3)
             tmp = self.norm255(tmp)
             tmp=np.concatenate([tmp]*3, axis=-1)
             tmp=np.rot90(tmp, k=1, axes=(1,2))
             vols.append(tmp)
                
-        segs = [load_volfile(self.zone_filenames[indices][0], **load_params),
-                load_volfile(self.zone_filenames[indices][1], **load_params)]
+        segs = [load_volfile(self.zone_filenames[0], **load_params),
+                load_volfile(self.zone_filenames[1], **load_params)]
         
         segs = [self.binarize(seg) for seg in segs]
         return vols, segs
@@ -59,14 +56,14 @@ class dataset_loaders(data.Dataset):
         return seg.astype(np.uint8)
     
     def __len__(self):
-        return len(self.pair_filenames)
+        return len(self.pair_filenames)//2
  
 
     def __getitem__(self, idx):
         dict_data = {}
         scan, seg = self.load_data(idx)
         dict_data = {'mv_img': scan[0], 'mv_seg': seg[0], 'fx_img': scan[1], 'fx_seg': seg[0],
-                     'fx_key': self.trg_filenames[idx].split('/')[-1], 'mv_key': self.src_filenames[idx].split('/')[-1]}
+                     'fx_key': self.pair_filenames[0].split('/')[-1], 'mv_key': self.pair_filenames[1].split('/')[-1]}
         return dict_data
  
         
