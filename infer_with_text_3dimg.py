@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import numpy as np 
 import matplotlib.pyplot as plt
 from dataloaders.LangDataLoader3d import dataset_loaders
-from torch.utils.data import DataLoader
+from dataloaders.dataloaders import LongitudinalData
 from networks.networks import SamWithTextPrompt, draw_image
 # from networks.networks_with_pretrain import SamWithTextPrompt
 from text_prompts import  generate_prompts
@@ -127,11 +127,15 @@ def training(args):
 
     # processor = SamProcessor.from_pretrained('facebook/sam-vit-base')
     model = SamWithTextPrompt(sam_type=args.sam_type)
-    batch_size = args.batch_size
-    train_dataset = dataset_loaders(path=args.dataroot, phase='train', batch_size=batch_size, np_var='vol', add_feat_axis=True)
-    val_dataset = dataset_loaders(path=args.dataroot, phase='valid', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
-    test_dataset = dataset_loaders(path=args.dataroot, phase='test', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
-   
+
+    # batch_size = args.batch_size
+    # train_dataset = dataset_loaders(path=args.dataroot, phase='train', batch_size=batch_size, np_var='vol', add_feat_axis=True)
+    # val_dataset = dataset_loaders(path=args.dataroot, phase='valid', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
+    # test_dataset = dataset_loaders(path=args.dataroot, phase='test', batch_size=batch_size, np_var='vol',  add_feat_axis=True)
+    dataroot = r'../Dataset/ASData/0.7-0.7-0.7-64-64-51' 
+    key_file = 'key-train-IFIB-val-IFIB-test-IFIB.pkl'
+    train_dataset = LongitudinalData(data_path=dataroot, key_file=key_file, phase='train')
+    test_dataset = LongitudinalData(data_path=dataroot, key_file=key_file, phase='val')
     # define training loop
     num_epochs = args.num_epoch
 
@@ -151,7 +155,7 @@ def training(args):
         epoch_losses = []
         case_acc = []
         epoch+=1
-        for i in range(37, args.num_epoch):
+        for i in range(0, args.num_epoch):
             # forward pass
             
             # forward pass
@@ -160,12 +164,16 @@ def training(args):
             batch_target, batch_source = input_dict['fx_img'], input_dict['mv_img'] # [batch, 1, x, y, z]
             tgt_seg, src_seg = input_dict['fx_seg'], input_dict['mv_seg']
             case_stack = torch.zeros(tgt_seg.shape)
+            case_stack = case_stack[...,None]
             
-            text_prompt = ['hole','edge','head', 'prostate', 'texture','middle','bathrobe', 'cloth']#, black in left, black in right, bladder in upper middle, rectum, bone, tumor, hole, vessel, fat, high signal, low signal, muscle'
+            text_prompt = generate_prompts()
+            # text_prompt = ['left']#['hole','edge','head', 'prostate', 'texture','middle','bathrobe', 'cloth']#, black in left, black in right, bladder in upper middle, rectum, bone, tumor, hole, vessel, fat, high signal, low signal, muscle'
             min_len = min(batch_target.shape[0],batch_source.shape[0])
+    
             # idx = np.random.randint(min_len//2-10, min_len//2+10)
 
             for idx in range(0, min_len, 1):
+                print(batch_source[idx].shape)
                 src_input = Image.fromarray(batch_source[idx])
                 tgt_input = Image.fromarray(batch_target[idx])
                 src_seg_in = Image.fromarray(src_seg[idx].squeeze(), mode='L')
@@ -175,13 +183,13 @@ def training(args):
                     src_pred_msk, src_boxes, src_phrases, src_logits, src_emb = model.predict(image_pil=src_input,
                       text_prompt=text_prompt)
                     labels = [f"{phrase} {logit:.2f}" for phrase, logit in zip(src_phrases, src_logits)]
-                    # print('source', labels)
+                    print('source', labels)
                     if len(src_boxes)==0:
                         continue
                     tgt_pred_msk, tgt_boxes, tgt_phrases, tgt_logits, tgt_emb = model.predict(image_pil=tgt_input,
                       text_prompt=text_prompt)
                     tgt_labels = [f"{phrase} {logit:.2f}" for phrase, logit in zip(tgt_phrases, tgt_logits)]
-                    # print('target', tgt_labels)
+                    print('target', tgt_labels)
                     # print('before paring', src_pred_msk.shape, tgt_pred_msk.shape)
                 
                 src_img = prepare_draw_image(src_input, src_pred_msk, src_boxes, labels)
@@ -208,21 +216,21 @@ def training(args):
                     # check output status
                     # print(masks_warped.max(), tgt_paired_roi.max(), prostate_mask_warped.max(), to_tensor(tgt_seg_in).max()) #255 1 255 1
                     # print(case_stack.shape, masks_warped.shape, tgt_paired_roi.shape, prostate_mask_warped.shape, to_tensor(tgt_seg_in).shape)
-                    case_stack[idx,:,:,0]=prostate_mask_warped[0] #case stack shape[48, 1000, 1000, 1] prostate shape [1000, 1000, 1]
+                    case_stack[idx,:,:, 0]=prostate_mask_warped[0] #case stack shape[48, 1000, 1000, 1] prostate shape [1000, 1000, 1]
                     dice=dice_score(masks_warped, tgt_paired_roi)
                     epoch_losses.append(dice)
                     # print(dice_score(prostate_mask_warped, to_tensor(tgt_seg_in)))
                     #plot and save images
-                    if idx % 100 == 10:
-                        # cv2.imwrite(f'{savefigs}/src{i}_{idx}.png', src_img.permute(1,2,0).numpy())
-                        # cv2.imwrite(f'{savefigs}/tgt{i}_{idx}.png', tgt_img.permute(1,2,0).numpy())
-                        # for k in range(src_paired_roi.shape[0]):
-                        #     cv2.imwrite(f'{savefigs}/src_paired_roi{i}_{idx}_{k}.png', src_paired_roi[k,...].numpy().astype(np.uint8)*255)
-                        # for k in range(tgt_paired_roi.shape[0]):
-                        #     cv2.imwrite(f'{savefigs}/tgt_paired_roi{i}_{idx}_{k}.png', tgt_paired_roi[k,...].numpy().astype(np.uint8)*255)
-                        # for k in range(masks_warped.shape[0]):
-                        #     cv2.imwrite(f'{savefigs}/masks_warped{i}_{idx}_{k}.png', masks_warped[k,...].numpy()*255)
-                        # cv2.imwrite(f'{savefigs}/image_warped{i}_{idx}.png', image_warped.permute(1,2,0).numpy())
+                    if idx % 10 == 0:
+                        cv2.imwrite(f'{savefigs}/src{i}_{idx}.png', src_img.permute(1,2,0).numpy())
+                        cv2.imwrite(f'{savefigs}/tgt{i}_{idx}.png', tgt_img.permute(1,2,0).numpy())
+                        for k in range(src_paired_roi.shape[0]):
+                            cv2.imwrite(f'{savefigs}/src_paired_roi{i}_{idx}_{k}.png', src_paired_roi[k,...].numpy().astype(np.uint8)*255)
+                        for k in range(tgt_paired_roi.shape[0]):
+                            cv2.imwrite(f'{savefigs}/tgt_paired_roi{i}_{idx}_{k}.png', tgt_paired_roi[k,...].numpy().astype(np.uint8)*255)
+                        for k in range(masks_warped.shape[0]):
+                            cv2.imwrite(f'{savefigs}/masks_warped{i}_{idx}_{k}.png', masks_warped[k,...].numpy()*255)
+                        cv2.imwrite(f'{savefigs}/image_warped{i}_{idx}.png', image_warped.permute(1,2,0).numpy())
                     
                         plot_together(src_img, tgt_img, src_paired_roi, tgt_paired_roi, masks_warped, image_warped, i, idx, savefigs)
             #save img and metric
@@ -255,11 +263,11 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--lr', type=float, default=1e-6)
     parser.add_argument('--ckp_path', type=str, default='checkpoints')
-    parser.add_argument('--savefigs', type=str, default='savefigs_multi')
+    parser.add_argument('--savefigs', type=str, default='savefigs_intra')
     parser.add_argument('--sam_type', type=str, default='vit_h')
     parser.add_argument('--model_name', type=str, default='samregnet')
     parser.add_argument('--weight_decay', type=float, default=1e-4)
-    parser.add_argument('--dataroot', type=str, default='datasets')
+    parser.add_argument('--dataroot', type=str, default='../Dataset/abdomen_data/')
     parser.add_argument('--continue_train', action='store_true')
     parser.add_argument('--gpu', type=str, default='0')
     args = parser.parse_args()
