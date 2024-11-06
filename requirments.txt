@@ -2,6 +2,7 @@ monai>=1.0
 scikit-image>=0.18.0
 torch
 torchio
+nibabel
 opencv-python
 groundingdino-py
 segment-anything
