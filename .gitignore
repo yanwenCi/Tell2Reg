@@ -7,4 +7,3 @@ datasets/
 logs/
 checkpoints/
 __pycache__/
-*.png
