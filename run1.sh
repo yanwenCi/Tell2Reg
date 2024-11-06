@@ -8,4 +8,4 @@
 #$ -wd /cluster/project7/longitude/SamMedImg
 
 conda activate ./env-sam
-python training_with_text_3dimg.py --data_root Datasets/data_lesion_cross1 > logs/prostate.log
+python training_with_text_3dimg.py --dataroot Datasets

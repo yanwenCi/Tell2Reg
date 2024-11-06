@@ -22,21 +22,10 @@ class dataset_loaders(data.Dataset):
         self.crop_size = crop_size
         self.istest = istest
         self.transforms = transform
-        self.path_list=open(os.path.join(self.path, self.phase, 'pair_path_list.txt'), 'r').readlines()
-        # if phase == 'valid':
-        #     self.path_list = self.path_list[:60]
-        # elif phase == 'test':
-        #     self.path_list = self.path_list[:120]
-        self.t2w_filenames = [x.strip().split(' ')[0] for x in self.path_list]
-        mid = len(self.t2w_filenames)//2
-        self.src_filenames = [self.t2w_filenames[i] for i in range(0, mid)]
-        self.trg_filenames = [self.t2w_filenames[i] for i in range(mid, len(self.t2w_filenames)-len(self.t2w_filenames)%2)]
-        self.pair_filenames = [[i,j] for i, j in zip(self.src_filenames, self.trg_filenames)]
-        self.pair_filenames = list(set(map(tuple, self.pair_filenames)))
-        self.zone_filenames = [[i.replace('t2w', 'prostate_mask'), j.replace('t2w', 'prostate_mask')] for i, j in self.pair_filenames]
-        # self.zon_filenames = [x.strip().split(' ')[2] for x in self.path_list]
-        # self.zonsrc_filenames = [self.zon_filenames[i] for i in range(0, mid)]
-        # self.zontgt_filenames = [self.zon_filenames[i] for i in range(mid, len(self.zon_filenames)-len(self.zon_filenames)%2)]
+        self.files = os.listdir(path)
+        self.files = [f for f in self.files if f.endswith('.nii.gz')]
+        self.src_filenames = self.files[0]
+        self.tgt_filenames = self.files[1]
         print(f"data length: {len(self.pair_filenames)}")
 
     def norm255(self, image):
