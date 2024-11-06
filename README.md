@@ -8,7 +8,7 @@ pip install -r requirements.txt
 ## Usage
 training_with_text3d.py --dataroot datasets --gpu 0
 ## 
-![network illustration](samregister-net-5.png)
+![network illustration](samregister-net-5.png){: style="width:300px;" }
 
 
 
